@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\WebhookEvent;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+
+class WebhookIngestionController extends Controller
+{
+    public function __invoke(Request $request, string $source): JsonResponse
+    {
+        if (! in_array($source, config('hookrelay.sources', []), true)) {
+            abort(404, 'Unsupported webhook source.');
+        }
+
+        $payload = $request->getContent();
+        $decodedPayload = json_decode($payload, true);
+
+        $event = WebhookEvent::query()->create([
+            'source' => $source,
+            'event_id' => is_array($decodedPayload) ? Arr::get($decodedPayload, 'id') : null,
+            'signature' => $request->header('Stripe-Signature')
+                ?? $request->header('X-Shopify-Hmac-Sha256')
+                ?? $request->header('X-Hub-Signature'),
+            'headers' => $request->headers->all(),
+            'payload' => $payload,
+            'status' => 'received',
+            'received_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Webhook received.',
+            'data' => [
+                'id' => $event->id,
+                'source' => $event->source,
+                'status' => $event->status,
+            ],
+        ], 202);
+    }
+}
