@@ -4,33 +4,33 @@ use App\Models\WebhookEvent;
 
 it('accepts an allowed webhook source and stores the event', function () {
     $payload = [
-        'id' => 'evt_12345',
-        'type' => 'invoice.paid',
+        'id' => 'gh_evt_12345',
+        'type' => 'push',
         'data' => ['object' => ['customer' => 'cus_123']],
     ];
 
-    $response = $this->postJson('/webhooks/stripe', $payload, [
-        'Stripe-Signature' => 't=1,v1=testsignature',
+    $response = $this->postJson('/webhooks/github', $payload, [
+        'X-Hub-Signature' => 'sha1=testsignature',
     ]);
 
     $response->assertAccepted()
         ->assertJsonPath('message', 'Webhook received.')
-        ->assertJsonPath('data.source', 'stripe')
+        ->assertJsonPath('data.source', 'github')
         ->assertJsonPath('data.status', 'received');
 
     $event = WebhookEvent::query()->first();
 
     expect($event)->not->toBeNull();
-    expect($event->source)->toBe('stripe');
-    expect($event->event_id)->toBe('evt_12345');
-    expect($event->signature)->toBe('t=1,v1=testsignature');
+    expect($event->source)->toBe('github');
+    expect($event->event_id)->toBe('gh_evt_12345');
+    expect($event->signature)->toBe('sha1=testsignature');
     expect($event->status)->toBe('received');
-    expect($event->headers)->toBeArray()->toHaveKey('stripe-signature');
+    expect($event->headers)->toBeArray()->toHaveKey('x-hub-signature');
 
     $this->assertDatabaseHas('webhook_events', [
         'id' => $event->id,
-        'source' => 'stripe',
-        'event_id' => 'evt_12345',
+        'source' => 'github',
+        'event_id' => 'gh_evt_12345',
         'status' => 'received',
     ]);
 });

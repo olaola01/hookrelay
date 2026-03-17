@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Webhooks\Services\SignatureVerifierResolver;
 use App\Models\WebhookEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,14 @@ class WebhookIngestionController extends Controller
         }
 
         $payload = $request->getContent();
+        $signatureVerifier = app(SignatureVerifierResolver::class)->forSource($source);
+
+        if (! $signatureVerifier->verify($request, $payload)) {
+            return response()->json([
+                'message' => 'Invalid webhook signature.',
+            ], 401);
+        }
+
         $decodedPayload = json_decode($payload, true);
 
         $event = WebhookEvent::query()->create([

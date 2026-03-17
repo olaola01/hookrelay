@@ -26,4 +26,11 @@ return [
         'max_attempts' => (int) env('HOOKRELAY_MAX_RETRIES', 5),
         'backoff_seconds' => $backoffSeconds === [] ? $defaultBackoff : $backoffSeconds,
     ],
+
+    'signatures' => [
+        'stripe' => [
+            'secret' => env('STRIPE_WEBHOOK_SECRET'),
+            'tolerance_seconds' => (int) env('STRIPE_WEBHOOK_TOLERANCE', 300),
+        ],
+    ],
 ];
