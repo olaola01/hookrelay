@@ -30,9 +30,7 @@ class WebhookIngestionController extends Controller
         $event = WebhookEvent::query()->create([
             'source' => $source,
             'event_id' => is_array($decodedPayload) ? Arr::get($decodedPayload, 'id') : null,
-            'signature' => $request->header('Stripe-Signature')
-                ?? $request->header('X-Shopify-Hmac-Sha256')
-                ?? $request->header('X-Hub-Signature'),
+            'signature' => $this->resolveSignatureHeader($request),
             'headers' => $request->headers->all(),
             'payload' => $payload,
             'status' => 'received',
@@ -47,5 +45,13 @@ class WebhookIngestionController extends Controller
                 'status' => $event->status,
             ],
         ], 202);
+    }
+
+    private function resolveSignatureHeader(Request $request): ?string
+    {
+        return $request->header('Stripe-Signature')
+            ?? $request->header('X-Shopify-Hmac-Sha256')
+            ?? $request->header('X-Hub-Signature-256')
+            ?? $request->header('X-Hub-Signature');
     }
 }

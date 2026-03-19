@@ -4,33 +4,31 @@ use App\Models\WebhookEvent;
 
 it('accepts an allowed webhook source and stores the event', function () {
     $payload = [
-        'id' => 'gh_evt_12345',
-        'type' => 'push',
+        'id' => 'slack_evt_12345',
+        'type' => 'message.created',
         'data' => ['object' => ['customer' => 'cus_123']],
     ];
 
-    $response = $this->postJson('/webhooks/github', $payload, [
-        'X-Hub-Signature' => 'sha1=testsignature',
-    ]);
+    $response = $this->postJson('/webhooks/slack', $payload);
 
     $response->assertAccepted()
         ->assertJsonPath('message', 'Webhook received.')
-        ->assertJsonPath('data.source', 'github')
+        ->assertJsonPath('data.source', 'slack')
         ->assertJsonPath('data.status', 'received');
 
     $event = WebhookEvent::query()->first();
 
     expect($event)->not->toBeNull();
-    expect($event->source)->toBe('github');
-    expect($event->event_id)->toBe('gh_evt_12345');
-    expect($event->signature)->toBe('sha1=testsignature');
+    expect($event->source)->toBe('slack');
+    expect($event->event_id)->toBe('slack_evt_12345');
+    expect($event->signature)->toBeNull();
     expect($event->status)->toBe('received');
-    expect($event->headers)->toBeArray()->toHaveKey('x-hub-signature');
+    expect($event->headers)->toBeArray()->toHaveKey('content-type');
 
     $this->assertDatabaseHas('webhook_events', [
         'id' => $event->id,
-        'source' => 'github',
-        'event_id' => 'gh_evt_12345',
+        'source' => 'slack',
+        'event_id' => 'slack_evt_12345',
         'status' => 'received',
     ]);
 });

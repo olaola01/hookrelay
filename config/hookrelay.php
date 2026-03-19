@@ -28,6 +28,14 @@ return [
     ],
 
     'signatures' => [
+        'github' => [
+            'secret' => env('GITHUB_WEBHOOK_SECRET'),
+        ],
+
+        'shopify' => [
+            'secret' => env('SHOPIFY_WEBHOOK_SECRET'),
+        ],
+
         'stripe' => [
             'secret' => env('STRIPE_WEBHOOK_SECRET'),
             'tolerance_seconds' => (int) env('STRIPE_WEBHOOK_TOLERANCE', 300),
