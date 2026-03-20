@@ -1,6 +1,11 @@
 <?php
 
+use App\Domain\Webhooks\Jobs\ProcessWebhookEventJob;
+use Illuminate\Support\Facades\Queue;
+
 it('accepts shopify webhook when signature is valid', function () {
+    Queue::fake();
+
     config(['hookrelay.signatures.shopify.secret' => 'shopify_test_secret']);
 
     $payload = json_encode([
@@ -32,6 +37,8 @@ it('accepts shopify webhook when signature is valid', function () {
         'event_id' => 'shopify_evt_valid',
         'status' => 'received',
     ]);
+
+    Queue::assertPushed(ProcessWebhookEventJob::class);
 });
 
 it('rejects shopify webhook when signature is invalid', function () {

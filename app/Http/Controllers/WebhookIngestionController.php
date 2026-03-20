@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Webhooks\Jobs\ProcessWebhookEventJob;
 use App\Domain\Webhooks\Services\SignatureVerifierResolver;
 use App\Models\WebhookEvent;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,8 @@ class WebhookIngestionController extends Controller
             'status' => 'received',
             'received_at' => now(),
         ]);
+
+        ProcessWebhookEventJob::dispatch($event->id);
 
         return response()->json([
             'message' => 'Webhook received.',

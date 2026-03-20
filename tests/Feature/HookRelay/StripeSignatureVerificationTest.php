@@ -1,8 +1,12 @@
 <?php
 
+use App\Domain\Webhooks\Jobs\ProcessWebhookEventJob;
 use App\Models\WebhookEvent;
+use Illuminate\Support\Facades\Queue;
 
 it('accepts stripe webhook when signature is valid', function () {
+    Queue::fake();
+
     config(['hookrelay.signatures.stripe.secret' => 'whsec_test_secret']);
 
     $payload = json_encode([
@@ -35,6 +39,8 @@ it('accepts stripe webhook when signature is valid', function () {
         'event_id' => 'evt_stripe_valid',
         'status' => 'received',
     ]);
+
+    Queue::assertPushed(ProcessWebhookEventJob::class);
 });
 
 it('rejects stripe webhook when signature is invalid', function () {

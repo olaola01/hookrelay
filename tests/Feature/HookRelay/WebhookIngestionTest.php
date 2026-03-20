@@ -1,8 +1,12 @@
 <?php
 
+use App\Domain\Webhooks\Jobs\ProcessWebhookEventJob;
 use App\Models\WebhookEvent;
+use Illuminate\Support\Facades\Queue;
 
 it('accepts an allowed webhook source and stores the event', function () {
+    Queue::fake();
+
     $payload = [
         'id' => 'slack_evt_12345',
         'type' => 'message.created',
@@ -31,6 +35,14 @@ it('accepts an allowed webhook source and stores the event', function () {
         'event_id' => 'slack_evt_12345',
         'status' => 'received',
     ]);
+
+    Queue::assertPushed(ProcessWebhookEventJob::class, function (ProcessWebhookEventJob $job) use ($event): bool {
+        expect($job->webhookEventId)->toBe($event->id);
+        expect($job->connection)->toBe(config('hookrelay.queue.connection'));
+        expect($job->queue)->toBe(config('hookrelay.queue.name'));
+
+        return true;
+    });
 });
 
 it('returns not found for unsupported webhook source', function () {
