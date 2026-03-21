@@ -5,6 +5,7 @@ namespace App\Domain\Webhooks\Jobs;
 use App\Models\WebhookEvent;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Throwable;
 
 class ProcessWebhookEventJob implements ShouldQueue
 {
@@ -25,12 +26,43 @@ class ProcessWebhookEventJob implements ShouldQueue
             return;
         }
 
+        $attemptNumber = $event->deliveries()->count() + 1;
+        $startedAt = microtime(true);
+
         $event->forceFill([
             'status' => 'processing',
         ])->save();
 
-        $event->forceFill([
-            'status' => 'processed',
-        ])->save();
+        try {
+            $event->forceFill([
+                'status' => 'processed',
+            ])->save();
+
+            $event->deliveries()->create([
+                'attempt_number' => $attemptNumber,
+                'status' => 'success',
+                'latency_ms' => $this->resolveLatency($startedAt),
+                'processed_at' => now(),
+            ]);
+        } catch (Throwable $exception) {
+            $event->forceFill([
+                'status' => 'failed',
+            ])->save();
+
+            $event->deliveries()->create([
+                'attempt_number' => $attemptNumber,
+                'status' => 'failed',
+                'latency_ms' => $this->resolveLatency($startedAt),
+                'error_message' => $exception->getMessage(),
+                'processed_at' => now(),
+            ]);
+
+            throw $exception;
+        }
+    }
+
+    private function resolveLatency(float $startedAt): int
+    {
+        return max(0, (int) round((microtime(true) - $startedAt) * 1000));
     }
 }

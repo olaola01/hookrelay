@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use Database\Factories\WebhookEventFactory;
+use Database\Factories\WebhookDeliveryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class WebhookEvent extends Model
+class WebhookDelivery extends Model
 {
-    /** @use HasFactory<WebhookEventFactory> */
+    /** @use HasFactory<WebhookDeliveryFactory> */
     use HasFactory;
 
     /**
@@ -18,13 +18,12 @@ class WebhookEvent extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'source',
-        'event_id',
-        'signature',
-        'headers',
-        'payload',
+        'webhook_event_id',
+        'attempt_number',
         'status',
-        'received_at',
+        'latency_ms',
+        'error_message',
+        'processed_at',
     ];
 
     /**
@@ -35,13 +34,12 @@ class WebhookEvent extends Model
     protected function casts(): array
     {
         return [
-            'headers' => 'array',
-            'received_at' => 'datetime',
+            'processed_at' => 'datetime',
         ];
     }
 
-    public function deliveries(): HasMany
+    public function webhookEvent(): BelongsTo
     {
-        return $this->hasMany(WebhookDelivery::class);
+        return $this->belongsTo(WebhookEvent::class);
     }
 }
