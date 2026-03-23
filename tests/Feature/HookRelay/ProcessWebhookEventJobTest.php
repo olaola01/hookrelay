@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Webhooks\Jobs\ProcessWebhookEventJob;
+use App\Domain\Webhooks\Services\WebhookEventProcessor;
 use App\Models\WebhookDelivery;
 use App\Models\WebhookEvent;
 
@@ -43,4 +44,43 @@ it('increments the attempt number for subsequent delivery records', function () 
 
     expect($delivery->attempt_number)->toBe(2);
     expect($delivery->status)->toBe('success');
+});
+
+it('uses the configured retry metadata', function () {
+    config([
+        'hookrelay.retries.max_attempts' => 5,
+        'hookrelay.retries.backoff_seconds' => [10, 30, 90, 270, 810],
+    ]);
+
+    $job = new ProcessWebhookEventJob(123);
+
+    expect($job->tries())->toBe(5);
+    expect($job->backoff())->toBe([10, 30, 90, 270, 810]);
+});
+
+it('marks the event failed and records a failed delivery when processing throws', function () {
+    app()->bind(WebhookEventProcessor::class, fn () => new class extends WebhookEventProcessor
+    {
+        public function process(WebhookEvent $event): void
+        {
+            throw new \RuntimeException('Processing failed.');
+        }
+    });
+
+    $event = WebhookEvent::factory()->create([
+        'status' => 'received',
+    ]);
+
+    $job = new ProcessWebhookEventJob($event->id);
+
+    expect(fn () => $job->handle())->toThrow(\RuntimeException::class, 'Processing failed.');
+
+    expect($event->fresh()->status)->toBe('failed');
+
+    $delivery = WebhookDelivery::query()->where('webhook_event_id', $event->id)->sole();
+
+    expect($delivery->attempt_number)->toBe(1);
+    expect($delivery->status)->toBe('failed');
+    expect($delivery->error_message)->toBe('Processing failed.');
+    expect($delivery->latency_ms)->toBeGreaterThanOrEqual(0);
 });

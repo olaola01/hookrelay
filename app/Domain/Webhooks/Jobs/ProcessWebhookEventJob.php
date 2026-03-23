@@ -2,6 +2,7 @@
 
 namespace App\Domain\Webhooks\Jobs;
 
+use App\Domain\Webhooks\Services\WebhookEventProcessor;
 use App\Models\WebhookEvent;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -16,6 +17,19 @@ class ProcessWebhookEventJob implements ShouldQueue
     ) {
         $this->onConnection(config('hookrelay.queue.connection'));
         $this->onQueue(config('hookrelay.queue.name'));
+    }
+
+    public function tries(): int
+    {
+        return (int) config('hookrelay.retries.max_attempts', 1);
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return config('hookrelay.retries.backoff_seconds', []);
     }
 
     public function handle(): void
@@ -34,6 +48,8 @@ class ProcessWebhookEventJob implements ShouldQueue
         ])->save();
 
         try {
+            app(WebhookEventProcessor::class)->process($event);
+
             $event->forceFill([
                 'status' => 'processed',
             ])->save();
