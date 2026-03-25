@@ -52,3 +52,26 @@ it('returns not found for unsupported webhook source', function () {
 
     $this->assertDatabaseCount('webhook_events', 0);
 });
+
+it('does not create or queue a duplicate webhook event for the same source', function () {
+    Queue::fake();
+
+    $existingEvent = WebhookEvent::factory()->create([
+        'source' => 'slack',
+        'event_id' => 'slack_evt_duplicate',
+        'status' => 'processed',
+    ]);
+
+    $response = $this->postJson('/webhooks/slack', [
+        'id' => 'slack_evt_duplicate',
+        'type' => 'message.created',
+    ]);
+
+    $response->assertAccepted()
+        ->assertJsonPath('message', 'Webhook already received.')
+        ->assertJsonPath('data.id', $existingEvent->id)
+        ->assertJsonPath('data.duplicate', true);
+
+    $this->assertDatabaseCount('webhook_events', 1);
+    Queue::assertNothingPushed();
+});

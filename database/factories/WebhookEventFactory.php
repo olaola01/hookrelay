@@ -40,6 +40,7 @@ class WebhookEventFactory extends Factory
             ], JSON_THROW_ON_ERROR),
             'status' => 'received',
             'received_at' => Carbon::now(),
+            'replayed_at' => null,
         ];
     }
 }

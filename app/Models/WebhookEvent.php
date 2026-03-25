@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\WebhookEventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WebhookEvent extends Model
@@ -25,6 +26,7 @@ class WebhookEvent extends Model
         'payload',
         'status',
         'received_at',
+        'replayed_at',
     ];
 
     /**
@@ -37,11 +39,22 @@ class WebhookEvent extends Model
         return [
             'headers' => 'array',
             'received_at' => 'datetime',
+            'replayed_at' => 'datetime',
         ];
     }
 
     public function deliveries(): HasMany
     {
         return $this->hasMany(WebhookDelivery::class);
+    }
+
+    public function latestDelivery(): HasOne
+    {
+        return $this->hasOne(WebhookDelivery::class)->latestOfMany('attempt_number');
+    }
+
+    public function failedDelivery(): HasOne
+    {
+        return $this->hasOne(FailedWebhookDelivery::class);
     }
 }

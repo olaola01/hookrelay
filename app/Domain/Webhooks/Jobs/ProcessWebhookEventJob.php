@@ -6,6 +6,7 @@ use App\Domain\Webhooks\Services\WebhookEventProcessor;
 use App\Models\WebhookEvent;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ProcessWebhookEventJob implements ShouldQueue
@@ -80,5 +81,39 @@ class ProcessWebhookEventJob implements ShouldQueue
     private function resolveLatency(float $startedAt): int
     {
         return max(0, (int) round((microtime(true) - $startedAt) * 1000));
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $event = WebhookEvent::query()->with('deliveries')->find($this->webhookEventId);
+
+        if ($event === null) {
+            return;
+        }
+
+        $event->forceFill([
+            'status' => 'failed',
+        ])->save();
+
+        $finalAttempts = max(
+            $event->deliveries->max('attempt_number') ?? 0,
+            $this->tries()
+        );
+
+        $event->failedDelivery()->updateOrCreate(
+            [],
+            [
+                'final_attempts' => $finalAttempts,
+                'last_error' => $exception->getMessage(),
+                'failed_at' => now(),
+            ]
+        );
+
+        Log::error('Webhook event moved to dead letter storage.', [
+            'webhook_event_id' => $event->id,
+            'source' => $event->source,
+            'final_attempts' => $finalAttempts,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

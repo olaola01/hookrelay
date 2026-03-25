@@ -14,15 +14,18 @@ Many SaaS systems struggle with webhooks because they can be unreliable, bursty,
 - Delivery analytics for operational visibility
 
 ## Status
-HookRelay is currently in active development.
+HookRelay currently ships as a working MVP.
 
-This repository tracks the implementation of:
+Implemented:
 - Ingestion endpoint (`POST /webhooks/{source}`)
-- Signature verification (Stripe, Shopify, GitHub, Slack)
-- Event processing jobs
-- Retry and dead letter flow
+- Signature verification for Stripe, Shopify, GitHub, and Slack passthrough
+- Queued processing via `ProcessWebhookEventJob`
+- Exponential retry metadata and delivery attempt tracking
+- Dead letter persistence for permanently failed events
 - Replay endpoint (`POST /events/{id}/replay`)
-- Analytics endpoints
+- Event analytics and filtering endpoints
+- Duplicate-event protection by `source + event_id`
+- Webhook ingestion rate limiting
 
 ## Proposed Request Pipeline
 Webhook Sender  
@@ -73,12 +76,27 @@ Run tests only:
 php artisan test
 ```
 
-## API Surface (Target)
+## API Surface
 - `POST /webhooks/{source}`
 - `POST /events/{id}/replay`
 - `GET /api/events`
 - `GET /api/events/failed`
 - `GET /api/events/stats`
+
+`GET /api/events` supports lightweight filtering with:
+- `source`
+- `status`
+- `from`
+- `to`
+- `per_page`
+
+## Demo Data
+Seed a small realistic dataset for local demos:
+```bash
+php artisan db:seed
+```
+
+This creates sample processed, retried, failed, and dead-lettered webhook events so the analytics endpoints return meaningful data immediately.
 
 ## Documentation
 - Architecture: [docs/architecture.md](docs/architecture.md)

@@ -17,6 +17,10 @@ $backoffSeconds = array_values(array_filter(
 return [
     'sources' => $sources === [] ? $defaultSources : $sources,
 
+    'ingestion' => [
+        'rate_limit_per_minute' => (int) env('HOOKRELAY_RATE_LIMIT', 120),
+    ],
+
     'queue' => [
         'connection' => env('HOOKRELAY_QUEUE_CONNECTION', env('QUEUE_CONNECTION', 'redis')),
         'name' => env('HOOKRELAY_QUEUE', env('REDIS_QUEUE', 'webhooks')),
